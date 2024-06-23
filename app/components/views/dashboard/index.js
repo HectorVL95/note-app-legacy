@@ -8,7 +8,7 @@ import { MdEdit } from "react-icons/md";
 import { FaTrashCan } from "react-icons/fa6";
 import {v4 as uuidv4} from 'uuid';
 import { db, storage } from "@/app/config/firebase";
-import { addDoc, getDocs, collection, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { addDoc, getDocs, collection, doc, updateDoc, deleteDoc} from "firebase/firestore";
 
 
 const DashBoard = () => {
@@ -53,23 +53,22 @@ const DashBoard = () => {
         ...doc.data(),
         id: doc.id
       }))
-      setSavedNote([...savedNote, newNote]);
+      setSavedNote(filteredData);
     } catch (error) {
       console.error(error)
     }
   }
 
   const trashNote = async (id) => {
-
     try{
-      await deleteDoc(notesCollectionRef)
+      const docRef = doc(db, "notes", id)
+      await deleteDoc(docRef) //this is line 65
       console.log(`deleted note with id ${id}`);
       const updatedNotes = savedNote.filter(note => note.id !== id)
       setSavedNote(updatedNotes)
     } catch (error) {
       console.error(error)
     }
- 
   }
 
   useEffect(() => {
