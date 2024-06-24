@@ -7,9 +7,9 @@ import { IoMdAdd } from "react-icons/io";
 import { MdEdit } from "react-icons/md";
 import { FaTrashCan } from "react-icons/fa6";
 import {v4 as uuidv4} from 'uuid';
-import { db, storage } from "@/app/config/firebase";
+import { db, auth } from "@/app/config/firebase";
 import { addDoc, getDocs, collection, doc, updateDoc, deleteDoc} from "firebase/firestore";
-
+import { onAuthStateChanged } from "firebase/auth";
 
 const DashBoard = () => {
 
@@ -30,49 +30,60 @@ const DashBoard = () => {
 
   const saveNote = async () => {
     try{
-      await addDoc(notesCollectionRef, {
-        id: notes.id,
-        title: notes.title,
-        body: notes.body
-      })
-      const newNote = { ...notes, id: uuidv4() };
-      setSavedNote([...savedNote, newNote]);
-      setNotes({
-        id: '', title: '', body: ''
-      });
-    }
+      if (user) {
+        const newNote = {...notes, id: uuidv4() };
+        const userNotesCollectionRef = collection(db, 'users', user.uid, 'notes');
+        await addDoc(userNotesCollectionRef, newNote);
+        setSavedNote([...savedNote, newNote]);
+        setNotes({
+          title: '', body: ''
+        });
+        }
+      }
     catch (error) {
       console.error(error)
     }
   }
 
-  const getNotesList = async () => {
-    try{
-      const data = await getDocs(notesCollectionRef);
-      const filteredData = data.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id
-      }))
-      setSavedNote(filteredData);
-    } catch (error) {
-      console.error(error)
-    }
+  const getNotesList = async (uid) => {
+      try{
+        const useNotesCollectionRef = collection(db, users, uid, 'notes');
+        const notesSnapshot = await getDocs(useNotesCollectionRef);
+        const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data()}))
+        setSavedNote(notesList)
+      } catch (error) {
+        console.error(error)
+      }
+
   }
 
   const trashNote = async (id) => {
     try{
-      const docRef = doc(db, "notes", id)
-      await deleteDoc(docRef) //this is line 65
-      console.log(`deleted note with id ${id}`);
-      const updatedNotes = savedNote.filter(note => note.id !== id)
-      setSavedNote(updatedNotes)
+      if (user) {
+        const docRef = doc(db, "notes", user.uid, 'notes', id)
+        await deleteDoc(docRef) //this is line 65
+        console.log(`deleted note with id ${id}`);
+        const updatedNotes = savedNote.filter(note => note.id !== id)
+        setSavedNote(updatedNotes)
+      } else{
+        console.error('User not logged in')
+      }
+
     } catch (error) {
       console.error(error)
     }
   }
 
   useEffect(() => {
-    getNotesList();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if(user) {
+        setUserId(user);
+        getNotesList(user.uid);
+      } else {
+        setUserId(null);
+        setSavedNote([]);
+      }
+    })
   }, [])
 
   return (
