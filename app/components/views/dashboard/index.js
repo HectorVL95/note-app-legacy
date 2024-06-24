@@ -16,7 +16,6 @@ const DashBoard = () => {
   //state hook to have the body of the notes with its own id
   const [notes, setNotes] = useState(
     {
-      id: '',
       title: '',
       body: ''
     }
@@ -25,15 +24,43 @@ const DashBoard = () => {
   //state hook that has the notes we have saved
   const [savedNote, setSavedNote] = useState([]);
 
+  const [user, setUser] = useState(null)
+
   //geting our databse 
   const notesCollectionRef = collection(db, "notes")
+
+  const getNotesList = async (uid) => {
+    try{
+      const useNotesCollectionRef = collection(db, 'users', uid, 'notes');
+      const notesSnapshot = await getDocs(useNotesCollectionRef);
+      const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data()}))
+      setSavedNote(notesList)
+    } catch (error) {
+      console.error(error)
+    }
+
+}
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if(user) {
+        setUser(user);
+        getNotesList(user.uid);
+      } else {
+        setUser(null);
+        setSavedNote([]);
+      }
+    })
+
+    return () => unsubscribe();
+  }, [])
 
   const saveNote = async () => {
     try{
       if (user) {
-        const newNote = {...notes, id: uuidv4() };
         const userNotesCollectionRef = collection(db, 'users', user.uid, 'notes');
-        await addDoc(userNotesCollectionRef, newNote);
+        const docRef = addDoc(userNotesCollectionRef, notes);
+        const newNote = {id: docRef.id, ...notes }
         setSavedNote([...savedNote, newNote]);
         setNotes({
           title: '', body: ''
@@ -45,23 +72,12 @@ const DashBoard = () => {
     }
   }
 
-  const getNotesList = async (uid) => {
-      try{
-        const useNotesCollectionRef = collection(db, users, uid, 'notes');
-        const notesSnapshot = await getDocs(useNotesCollectionRef);
-        const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data()}))
-        setSavedNote(notesList)
-      } catch (error) {
-        console.error(error)
-      }
-
-  }
 
   const trashNote = async (id) => {
     try{
       if (user) {
-        const docRef = doc(db, "notes", user.uid, 'notes', id)
-        await deleteDoc(docRef) //this is line 65
+        const docRef = doc(db, "users", user.uid, 'notes', id)
+        await deleteDoc(docRef) 
         console.log(`deleted note with id ${id}`);
         const updatedNotes = savedNote.filter(note => note.id !== id)
         setSavedNote(updatedNotes)
@@ -73,18 +89,6 @@ const DashBoard = () => {
       console.error(error)
     }
   }
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if(user) {
-        setUserId(user);
-        getNotesList(user.uid);
-      } else {
-        setUserId(null);
-        setSavedNote([]);
-      }
-    })
-  }, [])
 
   return (
     <Box component="div" className="flex justify-evenly">
