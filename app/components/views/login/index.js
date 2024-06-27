@@ -35,7 +35,7 @@ const Login = () => {
     <Box component="div" className="flex flex-col flex justify-center gap-8">
       <Box component="div">
         <Typography variant="h1" className="text-center">
-          Note App
+          Note App Legacy
         </Typography>
         <Typography variant="body2" className="text-center">
           Please Sign In
